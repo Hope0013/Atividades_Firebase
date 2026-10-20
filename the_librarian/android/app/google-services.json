@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "61941935456",
+    "project_id": "the-librarian-sofhia",
+    "storage_bucket": "the-librarian-sofhia.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:61941935456:android:37162ec7b57291ecb80205",
+        "android_client_info": {
+          "package_name": "com.example.the_librarian"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDqJMG7UlmruIi-AcSylA1u1cCIyiSps4Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
