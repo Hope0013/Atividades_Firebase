@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "544777676082",
+    "project_id": "lista-de-tarefas-sofhia",
+    "storage_bucket": "lista-de-tarefas-sofhia.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:544777676082:android:f282a56ab7b3830ded632b",
+        "android_client_info": {
+          "package_name": "com.example.tarefas_list_firebase"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "544777676082-gafe040iek2pk8quah9bi1rv559jjno8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuH44ceSiUeOmHwrMjhvkbg7QSDUt8MPo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "544777676082-gafe040iek2pk8quah9bi1rv559jjno8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
