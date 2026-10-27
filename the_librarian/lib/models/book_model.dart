@@ -79,7 +79,7 @@ class BookModel {
     );
   }
 
-  /// Constrói um objeto [BookModel] a partir da Open Library API (Catálogo Aberto / Fallback resiliente)
+  /// Constrói um objeto [BookModel] a partir da Open Library API (https://openlibrary.org/developers/api)
   factory BookModel.fromOpenLibrary(Map<String, dynamic> doc) {
     // Normaliza a chave para ser um ID válido e seguro no Firestore (sem barras '/')
     final rawKey = (doc['key'] as String? ?? '')
@@ -105,7 +105,10 @@ class BookModel {
     String description = '';
     if (doc['first_sentence'] != null) {
       if (doc['first_sentence'] is List && (doc['first_sentence'] as List).isNotEmpty) {
-        description = (doc['first_sentence'] as List).first.toString();
+        final first = (doc['first_sentence'] as List).first;
+        description = first is Map ? (first['value']?.toString() ?? '') : first.toString();
+      } else if (doc['first_sentence'] is Map) {
+        description = doc['first_sentence']['value']?.toString() ?? '';
       } else if (doc['first_sentence'] is String) {
         description = doc['first_sentence'] as String;
       }
@@ -129,9 +132,10 @@ class BookModel {
 
     // Capa do livro (Open Library Covers API)
     String thumbnail = '';
-    if (doc['cover_i'] != null) {
-      thumbnail = 'https://covers.openlibrary.org/b/id/${doc['cover_i']}-M.jpg';
-    } else if (doc['cover_edition_key'] != null) {
+    final coverId = doc['cover_i'];
+    if (coverId != null && coverId.toString() != '-1' && coverId.toString() != '0') {
+      thumbnail = 'https://covers.openlibrary.org/b/id/$coverId-M.jpg';
+    } else if (doc['cover_edition_key'] != null && doc['cover_edition_key'].toString().isNotEmpty) {
       thumbnail = 'https://covers.openlibrary.org/b/olid/${doc['cover_edition_key']}-M.jpg';
     } else if (doc['isbn'] != null && doc['isbn'] is List && (doc['isbn'] as List).isNotEmpty) {
       thumbnail = 'https://covers.openlibrary.org/b/isbn/${(doc['isbn'] as List).first}-M.jpg';
@@ -141,8 +145,6 @@ class BookModel {
     int pageCount = 0;
     if (doc['number_of_pages_median'] != null) {
       pageCount = (doc['number_of_pages_median'] as num).toInt();
-    } else if (doc['number_of_pages'] != null) {
-      pageCount = (doc['number_of_pages'] as num).toInt();
     } else if (doc['number_of_pages'] != null) {
       pageCount = (doc['number_of_pages'] as num).toInt();
     }

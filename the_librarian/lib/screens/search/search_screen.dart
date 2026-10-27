@@ -203,7 +203,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Digite o nome de uma obra ou autor acima para consultar milhares de volumes na Google Books API.',
+                  'Digite o nome de uma obra ou autor acima para consultar milhares de volumes na Open Library API.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.lora(
                     fontSize: 14,

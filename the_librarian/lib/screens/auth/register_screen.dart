@@ -9,7 +9,7 @@ import '../../providers/auth_provider.dart';
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
-  @overridecd
+  @override
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 

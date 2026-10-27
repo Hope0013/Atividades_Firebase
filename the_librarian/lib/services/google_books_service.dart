@@ -4,96 +4,56 @@ import 'package:http/http.dart' as http;
 import '../core/constants/app_constants.dart';
 import '../models/book_model.dart';
 
-/// Serviço responsável pela integração com catálogos literários públicos.
-/// Implementa arquitetura resiliente com suporte ao Google Books API
-/// e fallback automático transparente para a Open Library API quando
-/// ocorrer erro 429 (Too Many Requests / Quota Excedida) ou 403 (Acesso bloqueado).
+/// Serviço responsável pela busca de livros e consumo de APIs bibliográficas externas.
+/// Utiliza a Open Library API (https://openlibrary.org/developers/api) como fonte principal
+/// de dados do catálogo de livros, garantindo alta disponibilidade, gratuidade
+/// e sem bloqueios por limites de cota (429).
 class GoogleBooksService {
   static const String _googleBooksBaseUrl = 'https://www.googleapis.com/books/v1/volumes';
-  static const String _openLibraryBaseUrl = 'https://openlibrary.org/search.json';
 
-  // Controle de cooldown em memória: se o Google Books retornar 429/403,
-  // evita chamadas repetidas que sabidamente falharão, respondendo instantaneamente via Open Library.
-  static bool _isGoogleThrottled = false;
-  static DateTime? _throttledUntil;
-
-  /// Realiza a busca de livros de forma resiliente.
-  /// Tenta o Google Books. Caso o Google Books retorne 429 (Rate Limit) ou falhe,
-  /// ativa automaticamente o acervo Open Library, garantindo que a busca NUNCA quebre.
+  /// Realiza a busca de livros no acervo literário.
+  /// Consulta prioritariamente a Open Library API (https://openlibrary.org/developers/api).
+  /// Caso a busca na Open Library não retorne resultados, tenta de forma resiliente
+  /// a Google Books API como mecanismo secundário de fallback.
   Future<List<BookModel>> searchBooks(String query, {int maxResults = 25}) async {
     final cleanQuery = query.trim();
     if (cleanQuery.isEmpty) {
       return [];
     }
 
-    // Se o Google Books estiver em cooldown por erro 429, consulta Open Library direto
-    if (_isGoogleThrottled && _throttledUntil != null) {
-      if (DateTime.now().isBefore(_throttledUntil!)) {
-        if (kDebugMode) {
-          print('[TheLibrarian] Google Books em cooldown (429/403). Buscando na Open Library...');
-        }
-        return await _searchOpenLibrary(cleanQuery, maxResults: maxResults);
-      } else {
-        _isGoogleThrottled = false;
-        _throttledUntil = null;
-      }
-    }
-
     try {
-      final googleResults = await _searchGoogleBooks(cleanQuery, maxResults: maxResults);
-      if (googleResults.isNotEmpty) {
-        return googleResults;
+      // 1. Busca prioritária via Open Library API pública
+      final openLibraryResults = await _searchOpenLibrary(cleanQuery, maxResults: maxResults);
+      if (openLibraryResults.isNotEmpty) {
+        return openLibraryResults;
       }
-      // Se não encontrou no Google Books, tenta ainda na Open Library
-      return await _searchOpenLibrary(cleanQuery, maxResults: maxResults);
+
+      // Se a Open Library não tiver retornado nenhum registro, tenta o fallback
+      if (kDebugMode) {
+        print('[TheLibrarian] Open Library sem resultados para "$cleanQuery". Testando fallback...');
+      }
+      return await _searchGoogleBooksSafe(cleanQuery, maxResults: maxResults);
     } catch (e) {
       if (kDebugMode) {
-        print('[TheLibrarian] Google Books indisponível ($e). Ativando fallback Open Library...');
+        print('[TheLibrarian] Erro na consulta primária Open Library: $e. Tentando fallback...');
       }
-      return await _searchOpenLibrary(cleanQuery, maxResults: maxResults);
+      final fallbackResults = await _searchGoogleBooksSafe(cleanQuery, maxResults: maxResults);
+      if (fallbackResults.isNotEmpty) {
+        return fallbackResults;
+      }
+      if (e is String) rethrow;
+      throw 'Não foi possível carregar os livros no momento. Verifique sua conexão e tente novamente.';
     }
   }
 
-  /// Consulta primária via Google Books API
-  Future<List<BookModel>> _searchGoogleBooks(String cleanQuery, {int maxResults = 25}) async {
-    String url = '$_googleBooksBaseUrl?q=${Uri.encodeComponent(cleanQuery)}&maxResults=$maxResults&printType=books';
-    if (AppConstants.googleBooksApiKey != null && AppConstants.googleBooksApiKey!.isNotEmpty) {
-      url += '&key=${AppConstants.googleBooksApiKey}';
-    }
-
-    final uri = Uri.parse(url);
-    final response = await http.get(uri).timeout(
-      const Duration(seconds: 6),
-      onTimeout: () => throw 'Tempo limite no Google Books esgotado.',
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final items = data['items'] as List<dynamic>?;
-
-      if (items == null || items.isEmpty) {
-        return [];
-      }
-
-      return items.map((item) {
-        return BookModel.fromGoogleBooks(item as Map<String, dynamic>);
-      }).toList();
-    } else if (response.statusCode == 429 || response.statusCode == 403) {
-      // 429 (Too Many Requests / Quota Exceeded) ou 403 (Blocked API)
-      _isGoogleThrottled = true;
-      _throttledUntil = DateTime.now().add(const Duration(minutes: 20));
-      throw 'Google Books Rate Limit (Código ${response.statusCode})';
-    } else {
-      throw 'Erro ao consultar Google Books (Código ${response.statusCode})';
-    }
-  }
-
-  /// Consulta secundária (Fallback) via Open Library API pública
+  /// Consulta primária via Open Library API pública (https://openlibrary.org/developers/api)
   Future<List<BookModel>> _searchOpenLibrary(String cleanQuery, {int maxResults = 25}) async {
     try {
-      final uri = Uri.parse(
-        '$_openLibraryBaseUrl?q=${Uri.encodeComponent(cleanQuery)}&limit=$maxResults&fields=key,title,author_name,cover_i,cover_edition_key,isbn,number_of_pages_median,number_of_pages,first_sentence,subtitle,subject,first_publish_year',
-      );
+      final uri = Uri.https('openlibrary.org', '/search.json', {
+        'q': cleanQuery,
+        'limit': '$maxResults',
+        'fields': 'key,title,author_name,cover_i,cover_edition_key,isbn,number_of_pages_median,number_of_pages,first_sentence,subtitle,subject,first_publish_year',
+      });
 
       final response = await http.get(uri, headers: {
         'Accept': 'application/json',
@@ -106,7 +66,8 @@ class GoogleBooksService {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final decodedBody = utf8.decode(response.bodyBytes);
+        final data = jsonDecode(decodedBody) as Map<String, dynamic>;
         final docs = data['docs'] as List<dynamic>?;
 
         if (docs == null || docs.isEmpty) {
@@ -117,14 +78,51 @@ class GoogleBooksService {
           return BookModel.fromOpenLibrary(doc as Map<String, dynamic>);
         }).toList();
       } else {
-        throw 'Erro ao consultar acervo (Código ${response.statusCode})';
+        throw 'Erro ao consultar Open Library (Código ${response.statusCode})';
       }
     } catch (e) {
       if (kDebugMode) {
-        print('[TheLibrarian] Erro na Open Library: $e');
+        print('[TheLibrarian] Falha no serviço Open Library: $e');
       }
-      if (e is String) rethrow;
-      throw 'Não foi possível carregar os livros no momento. Verifique sua conexão e tente novamente.';
+      rethrow;
+    }
+  }
+
+  /// Consulta secundária (Fallback) com captura segura de falhas
+  Future<List<BookModel>> _searchGoogleBooksSafe(String cleanQuery, {int maxResults = 25}) async {
+    try {
+      String url = '$_googleBooksBaseUrl?q=${Uri.encodeComponent(cleanQuery)}&maxResults=$maxResults&printType=books';
+      if (AppConstants.googleBooksApiKey != null && AppConstants.googleBooksApiKey!.isNotEmpty) {
+        url += '&key=${AppConstants.googleBooksApiKey}';
+      }
+
+      final uri = Uri.parse(url);
+      final response = await http.get(uri).timeout(
+        const Duration(seconds: 4),
+        onTimeout: () => throw 'Tempo limite no Google Books esgotado.',
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+        final items = data['items'] as List<dynamic>?;
+
+        if (items == null || items.isEmpty) {
+          return [];
+        }
+
+        return items.map((item) {
+          return BookModel.fromGoogleBooks(item as Map<String, dynamic>);
+        }).toList();
+      }
+      return [];
+    } catch (e) {
+      if (kDebugMode) {
+        print('[TheLibrarian] Google Books fallback indisponível: $e');
+      }
+      return [];
     }
   }
 }
+
+/// Alias para manter consistência semântica com a migração para Open Library
+typedef OpenLibraryService = GoogleBooksService;
