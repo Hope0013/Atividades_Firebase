@@ -67,7 +67,85 @@ class BookModel {
     }
 
     // Google Books pageCount
-    final pageCount = volumeInfo['pageCount'] as int? ?? 0;
+    final pageCount = (volumeInfo['pageCount'] as num?)?.toInt() ?? 0;
+
+    return BookModel(
+      id: id,
+      title: title,
+      authors: authorsList,
+      description: description,
+      thumbnail: thumbnail,
+      pageCount: pageCount,
+    );
+  }
+
+  /// Constrói um objeto [BookModel] a partir da Open Library API (Catálogo Aberto / Fallback resiliente)
+  factory BookModel.fromOpenLibrary(Map<String, dynamic> doc) {
+    // Normaliza a chave para ser um ID válido e seguro no Firestore (sem barras '/')
+    final rawKey = (doc['key'] as String? ?? '')
+        .replaceAll('/', '_')
+        .replaceAll(RegExp(r'^_+'), '');
+    final id = rawKey.isNotEmpty
+        ? 'ol_$rawKey'
+        : (doc['cover_edition_key'] as String? ?? 'ol_${DateTime.now().millisecondsSinceEpoch}');
+
+    final title = doc['title'] as String? ?? 'Sem título';
+
+    // Lista de autores
+    final authorsList = <String>[];
+    if (doc['author_name'] != null && doc['author_name'] is List) {
+      for (var author in doc['author_name']) {
+        if (author is String) {
+          authorsList.add(author);
+        }
+      }
+    }
+
+    // Descrição / Sinopse com múltiplos fallbacks inteligentes
+    String description = '';
+    if (doc['first_sentence'] != null) {
+      if (doc['first_sentence'] is List && (doc['first_sentence'] as List).isNotEmpty) {
+        description = (doc['first_sentence'] as List).first.toString();
+      } else if (doc['first_sentence'] is String) {
+        description = doc['first_sentence'] as String;
+      }
+    }
+    if (description.isEmpty && doc['subtitle'] != null) {
+      description = doc['subtitle'].toString();
+    }
+    if (description.isEmpty && doc['subject'] != null && doc['subject'] is List) {
+      final subjects = (doc['subject'] as List).take(3).map((s) => s.toString()).join(', ');
+      if (subjects.isNotEmpty) {
+        description = 'Gêneros literários: $subjects.';
+      }
+    }
+    if (description.isEmpty) {
+      if (doc['first_publish_year'] != null) {
+        description = 'Obra clássica catalogada. Ano original: ${doc['first_publish_year']}.';
+      } else {
+        description = 'Obra catalogada via acervo bibliográfico.';
+      }
+    }
+
+    // Capa do livro (Open Library Covers API)
+    String thumbnail = '';
+    if (doc['cover_i'] != null) {
+      thumbnail = 'https://covers.openlibrary.org/b/id/${doc['cover_i']}-M.jpg';
+    } else if (doc['cover_edition_key'] != null) {
+      thumbnail = 'https://covers.openlibrary.org/b/olid/${doc['cover_edition_key']}-M.jpg';
+    } else if (doc['isbn'] != null && doc['isbn'] is List && (doc['isbn'] as List).isNotEmpty) {
+      thumbnail = 'https://covers.openlibrary.org/b/isbn/${(doc['isbn'] as List).first}-M.jpg';
+    }
+
+    // Contagem de páginas
+    int pageCount = 0;
+    if (doc['number_of_pages_median'] != null) {
+      pageCount = (doc['number_of_pages_median'] as num).toInt();
+    } else if (doc['number_of_pages'] != null) {
+      pageCount = (doc['number_of_pages'] as num).toInt();
+    } else if (doc['number_of_pages'] != null) {
+      pageCount = (doc['number_of_pages'] as num).toInt();
+    }
 
     return BookModel(
       id: id,

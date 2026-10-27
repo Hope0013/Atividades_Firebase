@@ -20,12 +20,18 @@ class AuthService {
     try {
       return await _auth.signInWithEmailAndPassword(
         email: email.trim(),
-        password: password.trim(),
+        password: password,
       );
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
-      throw 'Ocorreu um erro inesperado ao tentar entrar. Tente novamente.';
+      if (e is String) rethrow;
+      final errorStr = e.toString();
+      if (errorStr.contains('CONFIGURATION_NOT_FOUND') ||
+          errorStr.contains('configuration-not-found')) {
+        throw 'O provedor de E-mail/Senha não está ativado no Firebase Console do projeto the-librarian-sofhia. Acesse o console do Firebase > Authentication > Sign-in method e ative "E-mail/senha".';
+      }
+      throw 'Ocorreu um erro inesperado ao tentar entrar: $e';
     }
   }
 
@@ -37,12 +43,18 @@ class AuthService {
     try {
       return await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
-        password: password.trim(),
+        password: password,
       );
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
-      throw 'Ocorreu um erro inesperado ao criar sua conta. Tente novamente.';
+      if (e is String) rethrow;
+      final errorStr = e.toString();
+      if (errorStr.contains('CONFIGURATION_NOT_FOUND') ||
+          errorStr.contains('configuration-not-found')) {
+        throw 'O provedor de E-mail/Senha não está ativado no Firebase Console do projeto the-librarian-sofhia. Acesse o console do Firebase > Authentication > Sign-in method e ative "E-mail/senha".';
+      }
+      throw 'Ocorreu um erro inesperado ao criar sua conta: $e';
     }
   }
 
@@ -71,8 +83,17 @@ class AuthService {
         return 'Falha na conexão de rede. Verifique seu sinal de internet.';
       case 'too-many-requests':
         return 'Muitas tentativas sem sucesso. Aguarde alguns instantes.';
+      case 'operation-not-allowed':
+      case 'configuration-not-found':
+      case 'CONFIGURATION_NOT_FOUND':
+        return 'O provedor de E-mail/Senha não está ativado no Firebase Console do projeto the-librarian-sofhia. Acesse o console do Firebase > Authentication > Sign-in method e ative "E-mail/senha".';
       default:
-        return 'Erro de autenticação: ${e.message ?? e.code}';
+        final msg = e.message ?? e.code;
+        if (msg.contains('CONFIGURATION_NOT_FOUND') ||
+            msg.contains('configuration-not-found')) {
+          return 'O provedor de E-mail/Senha não está ativado no Firebase Console do projeto the-librarian-sofhia. Acesse o console do Firebase > Authentication > Sign-in method e ative "E-mail/senha".';
+        }
+        return 'Erro de autenticação: $msg';
     }
   }
 }

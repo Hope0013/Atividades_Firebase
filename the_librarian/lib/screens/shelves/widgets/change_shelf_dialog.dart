@@ -39,7 +39,7 @@ class ChangeShelfDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final booksProvider = Provider.of<BooksProvider>(context, listen: false);
-    final userId = auth.currentUser?.uid;
+    final userId = auth.userId;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),

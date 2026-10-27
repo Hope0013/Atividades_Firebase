@@ -55,7 +55,7 @@ class _StatsScreenState extends State<StatsScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
-    final userId = auth.currentUser?.uid;
+    final userId = auth.userId;
 
     if (userId == null) {
       return const Center(child: Text('Conecte-se para ver suas estatísticas.'));

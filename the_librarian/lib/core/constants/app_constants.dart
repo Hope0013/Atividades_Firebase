@@ -10,6 +10,12 @@ class AppConstants {
   static const String statsSubcollection = 'stats';
   static const String statsSummaryDoc = 'summary';
 
+  // Assets Visuais
+  static const String logoAsset = 'assets/images/logo.png';
+
+  // Configuração de API (Opcional - caso queira usar chave do Google Books API)
+  static const String? googleBooksApiKey = null;
+
   // Identificadores das Estantes
   static const String shelfQueroLer = 'quero_ler';
   static const String shelfLendo = 'lendo';

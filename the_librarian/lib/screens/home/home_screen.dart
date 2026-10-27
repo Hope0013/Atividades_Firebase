@@ -38,12 +38,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _listenToUserBooks() {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final userId = auth.currentUser?.uid;
+    final userId = auth.userId;
     if (userId != null) {
       final booksProvider = Provider.of<BooksProvider>(context, listen: false);
-      _userBooksSub = _firestoreService.streamAllUserBooks(userId).listen((books) {
-        booksProvider.syncUserBooks(books);
-      });
+      _userBooksSub = _firestoreService.streamAllUserBooks(userId).listen(
+        (books) {
+          booksProvider.syncUserBooks(books);
+        },
+        onError: (e) {
+          debugPrint('Aviso ao sincronizar estantes do leitor: $e');
+        },
+      );
     }
   }
 
@@ -143,8 +148,16 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.menu_book_rounded, color: AppColors.antiqueGold, size: 24),
-            const SizedBox(width: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.asset(
+                'assets/images/logo.png',
+                width: 26,
+                height: 26,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(width: 10),
             Text(
               titles[_currentIndex],
               style: GoogleFonts.playfairDisplay(

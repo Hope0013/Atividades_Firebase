@@ -124,7 +124,7 @@ class _SearchScreenState extends State<SearchScreen> {
             const CircularProgressIndicator(color: AppColors.burgundy),
             const SizedBox(height: 16),
             Text(
-              'Consultando o catálogo da Google Books...',
+              'Consultando o acervo da biblioteca...',
               style: GoogleFonts.playfairDisplay(
                 fontSize: 16,
                 fontStyle: FontStyle.italic,

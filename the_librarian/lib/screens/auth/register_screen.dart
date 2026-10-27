@@ -9,7 +9,7 @@ import '../../providers/auth_provider.dart';
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
-  @override
+  @overridecd
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
@@ -34,35 +34,128 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (_formKey.currentState?.validate() ?? false) {
       final auth = Provider.of<AuthProvider>(context, listen: false);
-      final success = await auth.signUp(
-        _emailController.text,
-        _passwordController.text,
-      );
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+
+      final success = await auth.signUp(email, password);
 
       if (success && mounted) {
-        // Volta para a tela anterior (o AuthWrapper detectará automaticamente o login)
-        Navigator.of(context).pop();
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
       } else if (!success && mounted && auth.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.errorRed,
-            behavior: SnackBarBehavior.floating,
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    auth.errorMessage!,
-                    style: GoogleFonts.lora(color: Colors.white, fontSize: 13),
+        final errorMsg = auth.errorMessage!;
+        final isConfigError = errorMsg.contains('Firebase Console') ||
+            errorMsg.contains('CONFIGURATION_NOT_FOUND') ||
+            errorMsg.contains('configuration-not-found');
+
+        if (isConfigError) {
+          _showFirebaseConfigDialog(email);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.errorRed,
+              behavior: SnackBarBehavior.floating,
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      errorMsg,
+                      style: GoogleFonts.lora(color: Colors.white, fontSize: 13),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
     }
+  }
+
+  void _showFirebaseConfigDialog(String email) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.parchmentCard,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.antiqueGold, width: 1.5),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.settings_suggest_rounded, color: AppColors.antiqueGold, size: 28),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Ativação do Firebase',
+                style: GoogleFonts.playfairDisplay(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.leatherBrown,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'O provedor de E-mail/Senha ainda não está ativado no Firebase Console do projeto "the-librarian-sofhia".',
+              style: GoogleFonts.lora(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.leatherBrown,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Para ativar no Firebase:\n'
+              '1. Acesse console.firebase.google.com\n'
+              '2. Abra o projeto "the-librarian-sofhia"\n'
+              '3. Vá em "Autenticação" (Authentication)\n'
+              '4. Na aba "Sign-in method", ative "E-mail/senha" e salve.',
+              style: GoogleFonts.lora(fontSize: 12, color: AppColors.sepiaText, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.antiqueGold.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Dica: você pode entrar agora mesmo no Modo Demonstração para testar as estantes e estatísticas!',
+                style: GoogleFonts.lora(fontSize: 12, color: AppColors.sepiaText),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Fechar', style: GoogleFonts.lora(color: AppColors.sepiaText)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.forestGreen),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              }
+              auth.enterGuestMode(email);
+            },
+            icon: const Icon(Icons.login, size: 18),
+            label: const Text('Entrar no Modo Demo'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -87,26 +180,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
               constraints: const BoxConstraints(maxWidth: 440),
               child: Column(
                 children: [
-                  // Ícone de caneta tinteiro / pena clássica
+                  // Logo Oficial The Librarian
                   Container(
-                    width: 72,
-                    height: 72,
+                    width: 90,
+                    height: 90,
                     decoration: BoxDecoration(
-                      color: AppColors.forestGreen,
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(18),
                       border: Border.all(color: AppColors.antiqueGold, width: 2),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.woodDark.withValues(alpha: 0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
+                          color: AppColors.woodDark.withValues(alpha: 0.14),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.history_edu_rounded,
-                      size: 38,
-                      color: AppColors.parchmentLight,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -170,7 +264,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               if (value == null || value.trim().isEmpty) {
                                 return 'Informe o seu e-mail.';
                               }
-                              if (!value.contains('@') || !value.contains('.')) {
+                              final trimmed = value.trim();
+                              if (!trimmed.contains('@') ||
+                                  !trimmed.contains('.') ||
+                                  trimmed.startsWith('@') ||
+                                  trimmed.endsWith('@') ||
+                                  trimmed.endsWith('.')) {
                                 return 'Informe um e-mail válido.';
                               }
                               return null;
@@ -313,6 +412,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         color: AppColors.sepiaText,
                         fontSize: 14,
                         decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Modo Demonstração rápido
+                  TextButton.icon(
+                    onPressed: () {
+                      final email = _emailController.text.trim();
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      }
+                      auth.enterGuestMode(email);
+                    },
+                    icon: const Icon(Icons.explore_outlined, color: AppColors.antiqueGold, size: 18),
+                    label: Text(
+                      'Entrar no Modo Demonstração (Convidado)',
+                      style: GoogleFonts.lora(
+                        color: AppColors.antiqueGold,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),

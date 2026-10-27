@@ -113,3 +113,84 @@ exports.onBookUpdated = functions.firestore
       );
     }
   });
+
+/**
+ * Função acionada na adição direta de um livro do usuário (onCreate).
+ * Se o leitor adicionar um livro diretamente na estante "Lidos", incrementa o resumo.
+ */
+exports.onBookCreated = functions.firestore
+  .document("users/{userId}/books/{bookId}")
+  .onCreate(async (snap, context) => {
+    const userId = context.params.userId;
+    const bookId = context.params.bookId;
+    const data = snap.data();
+
+    if (!data || data.status !== "lido") {
+      return null;
+    }
+
+    const pageCount = Number(data.pageCount || 0);
+    console.log(`Livro ${bookId} adicionado diretamente como 'lido' para ${userId}: +1 livro, +${pageCount} páginas.`);
+
+    const statsRef = db
+      .collection("users")
+      .doc(userId)
+      .collection("stats")
+      .doc("summary");
+
+    try {
+      await statsRef.set(
+        {
+          livrosLidos: admin.firestore.FieldValue.increment(1),
+          paginasLidas: admin.firestore.FieldValue.increment(pageCount),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+      return { success: true };
+    } catch (error) {
+      console.error(`Erro ao incrementar estatísticas na criação do livro ${bookId}:`, error);
+      return null;
+    }
+  });
+
+/**
+ * Função acionada na remoção de um livro do usuário (onDelete).
+ * Se o livro removido estava marcado como "lido", decrementa o resumo.
+ */
+exports.onBookDeleted = functions.firestore
+  .document("users/{userId}/books/{bookId}")
+  .onDelete(async (snap, context) => {
+    const userId = context.params.userId;
+    const bookId = context.params.bookId;
+    const data = snap.data();
+
+    if (!data || data.status !== "lido") {
+      return null;
+    }
+
+    const pageCount = Number(data.pageCount || 0);
+    console.log(`Livro ${bookId} ('lido') removido pelo leitor ${userId}: -1 livro, -${pageCount} páginas.`);
+
+    const statsRef = db
+      .collection("users")
+      .doc(userId)
+      .collection("stats")
+      .doc("summary");
+
+    try {
+      await statsRef.set(
+        {
+          livrosLidos: admin.firestore.FieldValue.increment(-1),
+          paginasLidas: admin.firestore.FieldValue.increment(-pageCount),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+      return { success: true };
+    } catch (error) {
+      console.error(`Erro ao decrementar estatísticas na exclusão do livro ${bookId}:`, error);
+      return null;
+    }
+  });
+

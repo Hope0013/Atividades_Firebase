@@ -1,1 +1,37 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"the-librarian-sofhia","appId":"1:61941935456:android:37162ec7b57291ecb80205","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"the-librarian-sofhia","configurations":{"android":"1:61941935456:android:37162ec7b57291ecb80205"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ],
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "the-librarian-sofhia",
+          "appId": "1:61941935456:android:37162ec7b57291ecb80205",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "the-librarian-sofhia",
+          "configurations": {
+            "android": "1:61941935456:android:37162ec7b57291ecb80205"
+          }
+        }
+      }
+    }
+  }
+}
